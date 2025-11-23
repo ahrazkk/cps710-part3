@@ -2,9 +2,9 @@ options {
   IGNORE_CASE=false;
   MULTI=true;	// This will generate one AST class for each non-suppressed non-terminal
   JJTREE_OUTPUT_DIRECTORY="AST";
-  // This will put all your AST classes in the AST directory
+// This will put all your AST classes in the AST directory
   VISITOR=true;
-  // This won't be used until the next assignment, but will be needed to make your assignment compile properly
+// This won't be used until the next assignment, but will be needed to make your assignment compile properly
 }
 
 PARSER_BEGIN(VNM)
@@ -21,36 +21,46 @@ TOKEN_MGR_DECLS :
 
 SKIP : {
   " "     
-  | "\t"    
-  | "\n"    
-  | "\r" 
+  |
+"\t"    
+  |   "\n"    
+  |
+"\r" 
 }
 
 TOKEN : 
 {
   < LESS: "<">
 | < LE:     "<="  >
-| < GREAT:  ">"   >
+|
+< GREAT:  ">"   >
 | < GE:     ">="  >
-| < EQ:     "=="  >
+|
+< EQ:     "=="  >
 | < NEQ:    "!="  >
-| < IN:     "=in" >
+|
+< IN:     "=in" >
 | < NOTIN:  "!in" >
 | < PLUS:	  "+"   >
-| < MINUS:	"-"   >
+|
+< MINUS:	"-"   >
 | < TIMES:	"*"   >
 | < DIV:	  "/"   >
-| < AND:	  "&"   >
+|
+< AND:	  "&"   >
 | < VBAR:	  "|"   >
 | < NOT:	  "!"   >
-| < ASSGN:	":="   >
+|
+< ASSGN:	":="   >
 | < LRND:	  "("   >
 | < LSQU:	  "["   >
 | < RRND:	  ")"   >
-| < RSQU:	  "]"   >
+|
+< RSQU:	  "]"   >
 | < COMMA:	","   >
 | < SCOL:	  ";"   >
-| < TRUE:	  "#1"  >
+|
+< TRUE:	  "#1"  >
 | < FALSE:	"#0"  >
 | < RANGE:	".."  >
 }
@@ -59,7 +69,8 @@ TOKEN [IGNORE_CASE]:
 {
   < DO:"DO">
 | < WHILE:"WHILE">
-| < FOR:"FOR">
+|
+< FOR:"FOR">
 | < IF:"IF">
 | < THEN:"THEN">
 | < ELIF:"ELIF">
@@ -69,7 +80,8 @@ TOKEN [IGNORE_CASE]:
 | < RETURN:"RETURN">
 | < END:"END">
 | < PRINT:"PRINT">
-| < PRINTLN:"PRINTLN">
+|
+< PRINTLN:"PRINTLN">
 | < VAR:"VAR">
 }
 
@@ -86,6 +98,7 @@ TOKEN :
 |	< IDNUM:  "#" <LETTER>(<LETTER>|<DIGIT>)* >  
 |	< IDBOOL:	"?" <LETTER>(<LETTER>|<DIGIT>)* >
 |	< IDVEC:  "v_" (<LETTER>|<DIGIT>)+ >  
+
 }
 
 // Special tokens are saved, but not sent to the parser
@@ -93,6 +106,8 @@ SPECIAL_TOKEN :
 {
   <COMMENT_SINGLE: "//" (~["\n","\r"])* ("\n"|"\r"|"\r\n")>
 }
+
+
 
 // ==================================================
 //                  PARSER BEGINS
@@ -114,10 +129,13 @@ void S() #void :
 
 //------------------------    STATEMENTS, BODIES AND CLAUSES -----------------------------------
 
+// These are all the statements which can be differentiated from each other 
+// with a single lookahead
 void statement_LL1() #void :
 {}
 {	var_decl()
-| fn_decl()
+|
+fn_decl()
 | return_stat()
 | print_stat()
 | println_stat()
@@ -126,10 +144,15 @@ void statement_LL1() #void :
 | while_stat()
 }
 
+// These are the statements not at the top level, i.e. inside bodies or clauses
+// Maintain structural integrity of assignments and function calls by not factoring them
+// and using a lookahead to distinguish between them
+
 void statement() #void :
 {}
 {	statement_LL1()
-| LOOKAHEAD(2) fn_call()
+|
+LOOKAHEAD(2) fn_call()
 | assign_stat()
 }
 
@@ -165,16 +188,20 @@ void ident_list() #void :
 //---------------------------   FUNCTION CALLS AND RETURNS ----------------------------------
 
 // Separate out function calls that can be used in expressions (numbers and vectors),
-// from those used in conditions (boolean).
+//     from those used in conditions (boolean).
+// While this simplifies some things, it adds ugliness elsewhere, e.g.
+// boolean_call() now must be
+//    explicitly looked for in start()... tradeoffs... 
 void fn_call()		 :
-{}
-{	<IDNUM> "(" (exp_list())? ")"
-| <IDVEC> "(" (exp_list())? ")"
+{ Token t; }
+{	(t=<IDNUM> {jjtThis.value = t.image;} #idnum) "(" (exp_list())? ")"
+|
+(t=<IDVEC> {jjtThis.value = t.image;} #idvec) "(" (exp_list())? ")"
 }
 
 void boolean_call()		 :
-{}
-{	<IDBOOL> "(" (exp_list())? ")"
+{ Token t; }
+{	(t=<IDBOOL> {jjtThis.value = t.image;} #idbool) "(" (exp_list())? ")"
 }
 
 void exp_list()	 :
@@ -194,10 +221,13 @@ void return_stat()	 :
 {	<RETURN> returnval()
 }
 
+// syntactic lookahead to distinguish conditions and expressions.
+//    this is needed since a condition() can begin with an expression()
 void returnval()	 :
 {}
 {	LOOKAHEAD(condition()) condition()
-| expression() 
+|
+expression() 
 }
 
 void print_stat() :
@@ -218,10 +248,11 @@ void print_list()	 :
 }
 
 void assign_stat() :
-{}
-{ <IDNUM> ":=" expression()
-| <IDBOOL> ":=" condition()
-| <IDVEC> ":=" vec_const()
+{ Token t; }
+{ (t=<IDNUM> {jjtThis.value = t.image;} #idnum) ":=" expression()
+|
+(t=<IDBOOL> {jjtThis.value = t.image;} #idbool) ":=" condition()
+| (t=<IDVEC> {jjtThis.value = t.image;} #idvec) ":=" vec_const()
 }
 
 // NEW: Completely reworked if_stat for the recursion requirement
@@ -256,14 +287,21 @@ void if_stat_internal() #If :
    )
 }
 
+// OLD CODE COMMENTED OUT
+// void if_stat()		 :
+// {}
+// {	<IF> condition() <THEN> clause() elifs() (<ELSE> clause())?
+// <FI>
+// }
+
 void elifs() #void :
 {}
 {	(<ELIF> condition() <THEN> clause())*
 }
 
 void for_stat()	 :
-{}
-{	<FOR> <IDNUM> <IN> exp_list() <DO> body() <END>
+{ Token t; }
+{	<FOR> (t=<IDNUM> {jjtThis.value = t.image;} #idnum) <IN> exp_list() <DO> body() <END>
 }
 
 void while_stat()	 :
@@ -274,26 +312,28 @@ void while_stat()	 :
 
 //---------------------------   CONDITIONS ---------------------------------------------------
 
-// NEW: Added #Or node with valid condition
-void condition() #Or(jjtree.arity() > 1) :
+// NEW: Added #Or node
+void condition() #Or(>1) :
 {}
 {	and_clause() ("|" and_clause())*
 }
 
-// NEW: Added #And node with valid condition
-void and_clause() #And(jjtree.arity() > 1) :
+// NEW: Added #And node
+void and_clause() #And(>1) :
 {}
 {	not_clause() ("&" not_clause())*
 }
 
 // syntactic lookahead to distinguish comparisons and conditions.
+// use boolean_call() instead of fn_call
 // NEW: Added #Not node
 void not_clause() #void :
 {}
 {	"!" not_clause() #Not
 | LOOKAHEAD(expression() comparator()) comparison() | "(" condition() ")"
 | LOOKAHEAD(2) boolean_call()
-| bool_simple()
+|
+bool_simple()
 }
 
 // NEW: Added #comparison(3)
@@ -312,14 +352,15 @@ void comparator() #void :
 |"==" #EQ
 | "!=" #NEQ
 | "=in" #IN
-| "!in" #NOTIN
+|
+"!in" #NOTIN
 }
 
 
 //---------------------------   EXPRESSIONS ------------------------------------------------
 
-// NEW: Reworked for ASTsum with pos/neg children and valid condition
-void expression() #sum(jjtree.arity() > 1) :
+// NEW: Reworked for ASTsum with pos/neg children
+void expression() #sum(>1) :
 {}
 {	
   (
@@ -344,10 +385,13 @@ void product() #void :
   )*
 }
 
+// use a lookahead to distinguish fn_call from simple_term.
+//    simple_term and fn_calls are quite distinct so factoring would be confusing
 void term() #void :
 {}
 {	"(" expression() ")"
-| LOOKAHEAD(2) fn_call()
+|
+LOOKAHEAD(2) fn_call()
 | simple_term()
 }
 
@@ -360,6 +404,10 @@ void simple_term() #void :
 | vec_const() 
 }
 
+// Again, with splitting out expression and condition productions,
+//    in order to have vectors of booleans, we need explicitly add them
+//    and we need the syntactic lookahead to distinguish between them
+//    (recall that conditions can begin with an expression)
 void vec_const()	 :
 {}
 {	
@@ -382,4 +430,5 @@ void bool_simple() #void :
 {	t=<IDBOOL> { jjtThis.value = t.image; } #idbool
 | <TRUE> #TRUE
 | <FALSE> #FALSE
+}
 }
