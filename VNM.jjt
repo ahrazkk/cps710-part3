@@ -166,7 +166,6 @@ void ident_list() #void :
 
 // Separate out function calls that can be used in expressions (numbers and vectors),
 // from those used in conditions (boolean).
-// FIXED: The broken comment that caused the crash was here
 void fn_call()		 :
 {}
 {	<IDNUM> "(" (exp_list())? ")"
@@ -383,5 +382,4 @@ void bool_simple() #void :
 {	t=<IDBOOL> { jjtThis.value = t.image; } #idbool
 | <TRUE> #TRUE
 | <FALSE> #FALSE
-}
 }
