@@ -244,7 +244,7 @@ void println_stat() :
 void print_list()	 :
 { Token t; }
 {	
-  (expression() | t=<STRING> {jjtThis.value = t.image;} #string | <IDBOOL>) ("," (expression() | t=<STRING> {jjtThis.value = t.image;} #string | <IDBOOL>))*
+  (expression() | t=<STRING> {jjtThis.value = t.image;} #string | t=<IDBOOL> {jjtThis.value = t.image;} #idbool) ("," (expression() | t=<STRING> {jjtThis.value = t.image;} #string | t=<IDBOOL> {jjtThis.value = t.image;} #idbool))*
 }
 
 void assign_stat() :
