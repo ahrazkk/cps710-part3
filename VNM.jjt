@@ -179,7 +179,7 @@ void fn_decl()		 :
 }
 
 // NEW: suppressed node creation here so children go to parent
-void ident_list() #void :
+void ident_list() :
 {}
 {	identifier() ("," identifier())*
 }
@@ -216,38 +216,38 @@ void condition_list() :
 { condition() ("," condition())*
 }
 
-void return_stat()	 :
+void return_stat() #Return :
 {}
 {	<RETURN> returnval()
 }
 
 // syntactic lookahead to distinguish conditions and expressions.
 //    this is needed since a condition() can begin with an expression()
-void returnval()	 :
+void returnval() #void :
 {}
 {	LOOKAHEAD(condition()) condition()
 |
 expression() 
 }
 
-void print_stat() :
+void print_stat() #Print :
 {}
 {	<PRINT> print_list()
 }
 
-void println_stat() :
+void println_stat() #Print_ln :
 {}
 { <PRINTLN> (print_list())?
 }
 
 // NEW: added token capture for String and nodified it
-void print_list()	 :
+void print_list() #void :
 { Token t; }
 {	
-  (expression() | t=<STRING> {jjtThis.value = t.image;} #string | t=<IDBOOL> {jjtThis.value = t.image;} #idbool) ("," (expression() | t=<STRING> {jjtThis.value = t.image;} #string | t=<IDBOOL> {jjtThis.value = t.image;} #idbool))*
+  (expression() | t=<STRING> {jjtThis.value = t.image.replace("\"", "");} #string | t=<IDBOOL> {jjtThis.value = t.image;} #idbool) ("," (expression() | t=<STRING> {jjtThis.value = t.image.replace("\"", "");} #string | t=<IDBOOL> {jjtThis.value = t.image;} #idbool))*
 }
 
-void assign_stat() :
+void assign_stat() #Assign :
 { Token t; }
 { (t=<IDNUM> {jjtThis.value = t.image;} #idnum) ":=" expression()
 |
@@ -268,7 +268,7 @@ void if_stat() #If :
     <ELSE> clause()
     |
     // Handle NULL (empty else)
-    {} #Null
+    {} #NULL
   )
   <FI>
 }
@@ -283,7 +283,7 @@ void if_stat_internal() #If :
      |
      <ELSE> clause()
      |
-     {} #Null
+     {} #NULL
    )
 }
 
@@ -299,12 +299,12 @@ void elifs() #void :
 {	(<ELIF> condition() <THEN> clause())*
 }
 
-void for_stat()	 :
+void for_stat() #For :
 { Token t; }
 {	<FOR> (t=<IDNUM> {jjtThis.value = t.image;} #idnum) <IN> exp_list() <DO> body() <END>
 }
 
-void while_stat()	 :
+void while_stat() #While :
 {}
 {	<WHILE> condition() <DO> body() <END>
 }
@@ -313,13 +313,13 @@ void while_stat()	 :
 //---------------------------   CONDITIONS ---------------------------------------------------
 
 // NEW: Added #Or node
-void condition() #Or(>1) :
+void condition() #or(>1) :
 {}
 {	and_clause() ("|" and_clause())*
 }
 
 // NEW: Added #And node
-void and_clause() #And(>1) :
+void and_clause() #and(>1) :
 {}
 {	not_clause() ("&" not_clause())*
 }
@@ -329,7 +329,7 @@ void and_clause() #And(>1) :
 // NEW: Added #Not node
 void not_clause() #void :
 {}
-{	"!" not_clause() #Not
+{	"!" not_clause() #not
 | LOOKAHEAD(expression() comparator()) comparison() | "(" condition() ")"
 | LOOKAHEAD(2) boolean_call()
 |
@@ -345,15 +345,15 @@ void comparison() #comparison(3) :
 // NEW: Nodified comparators
 void comparator() #void :
 {}
-{	"<" #LT
-| "<=" #LE
-| ">" #GT
-| ">=" #GE
-|"==" #EQ
-| "!=" #NEQ
-| "=in" #IN
+{	"<" #le
+| "<=" #leq
+| ">" #gre
+| ">=" #geq
+|"==" #eq
+| "!=" #neq
+| "=in" #in
 |
-"!in" #NOTIN
+"!in" #notin
 }
 
 
@@ -364,7 +364,7 @@ void expression() #sum(>1) :
 {}
 {	
   (
-     "+" product() #pos(1)
+     "+" product()
    | "-" product() #neg(1)
    | product()
   )
