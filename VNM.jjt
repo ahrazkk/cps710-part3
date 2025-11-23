@@ -178,8 +178,8 @@ void fn_decl()		 :
 {	<FUNCTION> identifier() "(" (ident_list())? ")" body() <END>
 }
 
-// NEW: void so children go up
-void ident_list() #void :
+// NEW: keeping this as ident_list node
+void ident_list() #ident_list :
 {}
 {	identifier() ("," identifier())*
 }
@@ -240,7 +240,7 @@ void println_stat() #Print_ln :
 { <PRINTLN> (print_list())?
 }
 
-// NEW: capture string value
+// NEW: handling strings and values
 void print_list() #void :
 { Token t; }
 {	
@@ -255,25 +255,25 @@ void assign_stat() #Assign :
 | (t=<IDVEC> {jjtThis.value = t.image;} #idvec) ":=" vec_const()
 }
 
-// NEW: if stat stuff
+// NEW: recursive if stat
 void if_stat() #If :
 {}
 {	
   <IF> condition() <THEN> clause() 
   (
-    // NEW: nested elif
+    // NEW: elif is nested if
     <ELIF> if_stat_internal()
     |
-    // NEW: else
+    // NEW: else clause
     <ELSE> clause()
     |
-    // NEW: null node
+    // NEW: null for empty else
     {} #NULL
   )
   <FI>
 }
 
-// NEW: helper for elifs
+// NEW: helper for recursion
 void if_stat_internal() #If :
 {}
 {
@@ -313,13 +313,13 @@ void while_stat() #While :
 //---------------------------   CONDITIONS ---------------------------------------------------
 
 // NEW: or node
-void condition() #or(jjtree.nodeArity() > 1) :
+void condition() #or(>1) :
 {}
 {	and_clause() ("|" and_clause())*
 }
 
 // NEW: and node
-void and_clause() #and(jjtree.nodeArity() > 1) :
+void and_clause() #and(>1) :
 {}
 {	not_clause() ("&" not_clause())*
 }
@@ -336,13 +336,13 @@ void not_clause() #void :
 bool_simple()
 }
 
-// NEW: 3 children
+// NEW: comparison with 3 kids
 void comparison() #comparison(3) :
 {}
 {	expression() comparator() expression()
 }
 
-// NEW: comparator nodes
+// NEW: operators
 void comparator() #void :
 {}
 {	"<" #le
@@ -359,13 +359,13 @@ void comparator() #void :
 
 //---------------------------   EXPRESSIONS ------------------------------------------------
 
-// NEW: sum logic
-void expression() #sum(jjtree.nodeArity() > 1 || startNeg) :
-{ boolean startNeg = false; }
+// NEW: sum with arity check
+void expression() #sum(>1) :
+{}
 {	
   (
      "+" product()
-   | "-" {startNeg=true;} product() #neg(1)
+   | "-" product() #neg(1)
    | product()
   )
   (
@@ -374,7 +374,7 @@ void expression() #sum(jjtree.nodeArity() > 1 || startNeg) :
   )*
 }
 
-// NEW: mul div mod
+// NEW: product operations
 void product() #void :
 {}
 {	term() 
@@ -395,7 +395,7 @@ LOOKAHEAD(2) fn_call()
 | simple_term()
 }
 
-// NEW: leaves
+// NEW: leaves with values
 void simple_term() #void :
 { Token t; }
 {	t=<IDNUM> { jjtThis.value = t.image; } #idnum
@@ -416,7 +416,7 @@ void vec_const()	 :
 | "[" (condition_list())? "]"
 }
 
-// NEW: identifiers
+// NEW: identifier nodes
 void identifier() #void :
 { Token t; }
 {	t=<IDNUM> { jjtThis.value = t.image; } #idnum
