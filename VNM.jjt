@@ -350,14 +350,15 @@ void comparison() #comparison(3) :
 // Nodified comparators
 void comparator() #void :
 {}
-{	"<" #LESS
-| "<=" #LE
-| ">" #GREAT
-| ">=" #GE
-|"==" #EQ
-| "!=" #NEQ
-| "=in" #IN
-| "!in" #NOTIN
+{	"<" #le
+| "<=" #leq
+| ">" #gre
+| ">=" #geq
+|"==" #eq
+| "!=" #neq
+| "=in" #in
+|
+"!in" #notin
 }
 
 
