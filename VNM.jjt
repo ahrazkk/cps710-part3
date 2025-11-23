@@ -175,13 +175,18 @@ void var_decl()	 :
 
 void fn_decl()		 :
 {}
-{	<FUNCTION> identifier() "(" (ident_list())? ")" body() <END>
+{	<FUNCTION> identifier() "(" (ident_list_node())? ")" body() <END>
 }
 
 // NEW: suppressed node creation here so children go to parent
-void ident_list() :
+void ident_list() #void :
 {}
 {	identifier() ("," identifier())*
+}
+
+void ident_list_node() #ident_list :
+{}
+{	ident_list()
 }
 
 
@@ -364,7 +369,7 @@ void expression() #sum(>1) :
 {}
 {	
   (
-     "+" product()
+     "+" product() #pos(1)
    | "-" product() #neg(1)
    | product()
   )
