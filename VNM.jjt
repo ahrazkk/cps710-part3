@@ -1,8 +1,10 @@
 options {
   IGNORE_CASE=false;
   MULTI=true;	// This will generate one AST class for each non-suppressed non-terminal
-  JJTREE_OUTPUT_DIRECTORY="AST";  // This will put all your AST classes in the AST directory
-  VISITOR=true;	// This won't be used until the next assignment, but will be needed to make your assignment compile properly
+  JJTREE_OUTPUT_DIRECTORY="AST";
+// This will put all your AST classes in the AST directory
+  VISITOR=true;
+// This won't be used until the next assignment, but will be needed to make your assignment compile properly
 }
 
 PARSER_BEGIN(VNM)
@@ -19,36 +21,46 @@ TOKEN_MGR_DECLS :
 
 SKIP : {
   " "     
-  |   "\t"    
+  |
+"\t"    
   |   "\n"    
-  |   "\r" 
+  |
+"\r" 
 }
 
 TOKEN : 
 {
   < LESS: "<">
 | < LE:     "<="  >
-| < GREAT:  ">"   >
+|
+< GREAT:  ">"   >
 | < GE:     ">="  >
-| < EQ:     "=="  >
+|
+< EQ:     "=="  >
 | < NEQ:    "!="  >
-| < IN:     "=in" >
+|
+< IN:     "=in" >
 | < NOTIN:  "!in" >
 | < PLUS:	  "+"   >
-| < MINUS:	"-"   >
+|
+< MINUS:	"-"   >
 | < TIMES:	"*"   >
 | < DIV:	  "/"   >
-| < AND:	  "&"   >
+|
+< AND:	  "&"   >
 | < VBAR:	  "|"   >
 | < NOT:	  "!"   >
-| < ASSGN:	":="   >
+|
+< ASSGN:	":="   >
 | < LRND:	  "("   >
 | < LSQU:	  "["   >
 | < RRND:	  ")"   >
-| < RSQU:	  "]"   >
+|
+< RSQU:	  "]"   >
 | < COMMA:	","   >
 | < SCOL:	  ";"   >
-| < TRUE:	  "#1"  >
+|
+< TRUE:	  "#1"  >
 | < FALSE:	"#0"  >
 | < RANGE:	".."  >
 }
@@ -57,7 +69,8 @@ TOKEN [IGNORE_CASE]:
 {
   < DO:"DO">
 | < WHILE:"WHILE">
-| < FOR:"FOR">
+|
+< FOR:"FOR">
 | < IF:"IF">
 | < THEN:"THEN">
 | < ELIF:"ELIF">
@@ -67,7 +80,8 @@ TOKEN [IGNORE_CASE]:
 | < RETURN:"RETURN">
 | < END:"END">
 | < PRINT:"PRINT">
-| < PRINTLN:"PRINTLN">
+|
+< PRINTLN:"PRINTLN">
 | < VAR:"VAR">
 }
 
@@ -106,7 +120,7 @@ SimpleNode start	() #void :
 }
 
 // entry point to parser. Called by TestVNM.java
-void S() throws ParseException		 :
+void S() #void :
 {}
 {	statement_LL1() ";"
 | LOOKAHEAD(identifier() ":=") assign_stat() ";" 
@@ -117,10 +131,11 @@ void S() throws ParseException		 :
 
 // These are all the statements which can be differentiated from each other 
 // with a single lookahead
-void statement_LL1()		 :
+void statement_LL1() #void :
 {}
 {	var_decl()
-| fn_decl()
+|
+fn_decl()
 | return_stat()
 | print_stat()
 | println_stat()
@@ -133,10 +148,11 @@ void statement_LL1()		 :
 // Maintain structural integrity of assignments and function calls by not factoring them
 // and using a lookahead to distinguish between them
 
-void statement()	 :
+void statement() #void :
 {}
 {	statement_LL1()
-| LOOKAHEAD(2) fn_call()
+|
+LOOKAHEAD(2) fn_call()
 | assign_stat()
 }
 
@@ -162,7 +178,8 @@ void fn_decl()		 :
 {	<FUNCTION> identifier() "(" (ident_list())? ")" body() <END>
 }
 
-void ident_list()	 :
+// NEW: suppressed node creation here so children go to parent
+void ident_list() #void :
 {}
 {	identifier() ("," identifier())*
 }
@@ -172,12 +189,14 @@ void ident_list()	 :
 
 // Separate out function calls that can be used in expressions (numbers and vectors),
 //     from those used in conditions (boolean).
-// While this simplifies some things, it adds ugliness elsewhere, e.g. boolean_call() now must be
+// While this simplifies some things, it adds ugliness elsewhere, e.g.
+boolean_call() now must be
 //    explicitly looked for in start()... tradeoffs... 
 void fn_call()		 :
 {}
 {	<IDNUM> "(" (exp_list())? ")"
-|	<IDVEC> "(" (exp_list())? ")"
+|
+<IDVEC> "(" (exp_list())? ")"
 }
 
 void boolean_call()		 :
@@ -207,7 +226,8 @@ void return_stat()	 :
 void returnval()	 :
 {}
 {	LOOKAHEAD(condition()) condition()
-| expression() 
+|
+expression() 
 }
 
 void print_stat() :
@@ -220,25 +240,61 @@ void println_stat() :
 { <PRINTLN> (print_list())?
 }
 
+// NEW: added token capture for String and nodified it
 void print_list()	 :
-{}
+{ Token t; }
 {	
-  (expression() | <STRING> | <IDBOOL>) ("," (expression() | <STRING> | <IDBOOL>))*
+  (expression() | t=<STRING> {jjtThis.value = t.image;} #string | <IDBOOL>) ("," (expression() | t=<STRING> {jjtThis.value = t.image;} #string | <IDBOOL>))*
 }
 
 void assign_stat() :
 {}
 { <IDNUM> ":=" expression()
-| <IDBOOL> ":=" condition()
+|
+<IDBOOL> ":=" condition()
 | <IDVEC> ":=" vec_const()
 }
 
-void if_stat()		 :
+// NEW: Completely reworked if_stat for the recursion requirement
+void if_stat() #If :
 {}
-{	<IF> condition() <THEN> clause() elifs() (<ELSE> clause())? <FI>
+{	
+  <IF> condition() <THEN> clause() 
+  (
+    // Handle ELIF as nested IF
+    <ELIF> if_stat_internal()
+    |
+    // Handle ELSE
+    <ELSE> clause()
+    |
+    // Handle NULL (empty else)
+    {} #Null
+  )
+  <FI>
 }
 
-void elifs()		 :
+// NEW: Helper for nested elifs to ensure 3 children
+void if_stat_internal() #If :
+{}
+{
+   condition() <THEN> clause()
+   (
+     <ELIF> if_stat_internal()
+     |
+     <ELSE> clause()
+     |
+     {} #Null
+   )
+}
+
+// OLD CODE COMMENTED OUT
+// void if_stat()		 :
+// {}
+// {	<IF> condition() <THEN> clause() elifs() (<ELSE> clause())?
+// <FI>
+// }
+
+void elifs() #void :
 {}
 {	(<ELIF> condition() <THEN> clause())*
 }
@@ -256,70 +312,95 @@ void while_stat()	 :
 
 //---------------------------   CONDITIONS ---------------------------------------------------
 
-void condition()	 :
+// NEW: Added #Or node
+void condition() #Or(>1) :
 {}
 {	and_clause() ("|" and_clause())*
 }
 
-void and_clause()	 :
+// NEW: Added #And node
+void and_clause() #And(>1) :
 {}
 {	not_clause() ("&" not_clause())*
 }
 
 // syntactic lookahead to distinguish comparisons and conditions.
 // use boolean_call() instead of fn_call
-void not_clause()	 :
+// NEW: Added #Not node
+void not_clause() #void :
 {}
-{	"!" not_clause()
+{	"!" not_clause() #Not
 | LOOKAHEAD(expression() comparator()) comparison() | "(" condition() ")"
 | LOOKAHEAD(2) boolean_call()
-| bool_simple()
+|
+bool_simple()
 }
 
-void comparison()	 :
+// NEW: Added #comparison(3)
+void comparison() #comparison(3) :
 {}
 {	expression() comparator() expression()
 }
 
-void comparator()	 :
+// NEW: Nodified comparators
+void comparator() #void :
 {}
-{	"<"
-| "<="
-| ">"
-| ">="
-|"=="
-| "!="
-| "=in"
-| "!in"
+{	"<" #LT
+| "<=" #LE
+| ">" #GT
+| ">=" #GE
+|"==" #EQ
+| "!=" #NEQ
+| "=in" #IN
+|
+"!in" #NOTIN
 }
 
 
 //---------------------------   EXPRESSIONS ------------------------------------------------
 
-void expression()	 :
+// NEW: Reworked for ASTsum with pos/neg children
+void expression() #sum(>1) :
 {}
-{	("+" | "-")? product() (("+" | "-") product())*
+{	
+  (
+     "+" product() #pos(1)
+   | "-" product() #neg(1)
+   | product()
+  )
+  (
+     "+" product() #pos(1)
+   | "-" product() #neg(1)
+  )*
 }
 
-void product()		 :
+// NEW: Reworked for MUL/DIV/MOD binary nodes
+void product() #void :
 {}
-{	term() (("*" | "/") term())*
+{	term() 
+  (
+      "*" term() #mul(2) 
+    | "/" term() #div(2)
+    | "%" term() #mod(2)
+  )*
 }
 
 // use a lookahead to distinguish fn_call from simple_term.
 //    simple_term and fn_calls are quite distinct so factoring would be confusing
-void term()		 :
+void term() #void :
 {}
 {	"(" expression() ")"
-| LOOKAHEAD(2) fn_call()
+|
+LOOKAHEAD(2) fn_call()
 | simple_term()
 }
 
-void simple_term()	 :
-{}
-{	<IDNUM>
-| <IDVEC>
-| <NUMBER>
+// NEW: Nodified leaves and capturing values
+void simple_term() #void :
+{ Token t; }
+{	t=<IDNUM> { jjtThis.value = t.image; } #idnum
+| t=<IDVEC> { jjtThis.value = t.image; } #idvec
+| t=<NUMBER> { jjtThis.value = t.image; } #number
 | vec_const() 
 }
 
@@ -330,22 +411,24 @@ void simple_term()	 :
 void vec_const()	 :
 {}
 {	
-  LOOKAHEAD("[" expression()) "[" (exp_list())? "]"
+  LOOKAHEAD("[" expression()) "[" (exp_list())?
+"]"
 | "[" (condition_list())? "]"
 }
 
-void identifier()	 :
-{}
-{	<IDNUM>
-| <IDBOOL>
-| <IDVEC> 
+// NEW: Nodified identifiers
+void identifier() #void :
+{ Token t; }
+{	t=<IDNUM> { jjtThis.value = t.image; } #idnum
+| t=<IDBOOL> { jjtThis.value = t.image; } #idbool
+| t=<IDVEC> { jjtThis.value = t.image; } #idvec
 }
 
-void bool_simple()		 :
-{}
-{	<IDBOOL>
-| <TRUE>
-| <FALSE>
-}   
-   
-   
+// NEW: Nodified boolean constants
+void bool_simple() #void :
+{ Token t; }
+{	t=<IDBOOL> { jjtThis.value = t.image; } #idbool
+| <TRUE> #TRUE
+| <FALSE> #FALSE
+}
+}
