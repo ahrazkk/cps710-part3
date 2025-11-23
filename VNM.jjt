@@ -178,7 +178,7 @@ void fn_decl()		 :
 {	<FUNCTION> identifier() "(" (ident_list_node())? ")" body() <END>
 }
 
-// NEW: suppressed node creation here so children go to parent
+// suppressed node creation here so children go to parent
 void ident_list() #void :
 {}
 {	identifier() ("," identifier())*
@@ -245,7 +245,7 @@ void println_stat() #Print_ln :
 { <PRINTLN> (print_list())?
 }
 
-// NEW: added token capture for String and nodified it
+// added token capture for String and nodified it
 void print_list() #void :
 { Token t; }
 {	
@@ -260,7 +260,7 @@ void assign_stat() #Assign :
 | (t=<IDVEC> {jjtThis.value = t.image;} #idvec) ":=" vec_const()
 }
 
-// NEW: Completely reworked if_stat for the recursion requirement
+// Completely reworked if_stat for the recursion requirement
 void if_stat() #If :
 {}
 {	
@@ -278,7 +278,7 @@ void if_stat() #If :
   <FI>
 }
 
-// NEW: Helper for nested elifs to ensure 3 children
+// Helper for nested elifs to ensure 3 children
 void if_stat_internal() #If :
 {}
 {
@@ -317,13 +317,13 @@ void while_stat() #While :
 
 //---------------------------   CONDITIONS ---------------------------------------------------
 
-// NEW: Added #Or node
+// Added #Or node
 void condition() #or(>1) :
 {}
 {	and_clause() ("|" and_clause())*
 }
 
-// NEW: Added #And node
+// Added #And node
 void and_clause() #and(>1) :
 {}
 {	not_clause() ("&" not_clause())*
@@ -331,7 +331,7 @@ void and_clause() #and(>1) :
 
 // syntactic lookahead to distinguish comparisons and conditions.
 // use boolean_call() instead of fn_call
-// NEW: Added #Not node
+// Added #Not node
 void not_clause() #void :
 {}
 {	"!" not_clause() #not
@@ -341,13 +341,13 @@ void not_clause() #void :
 bool_simple()
 }
 
-// NEW: Added #comparison(3)
+// Added #comparison(3)
 void comparison() #comparison(3) :
 {}
 {	expression() comparator() expression()
 }
 
-// NEW: Nodified comparators
+// Nodified comparators
 void comparator() #void :
 {}
 {	"<" #le
@@ -364,7 +364,7 @@ void comparator() #void :
 
 //---------------------------   EXPRESSIONS ------------------------------------------------
 
-// NEW: Reworked for ASTsum with pos/neg children
+// Reworked for ASTsum with pos/neg children
 void expression() #sum(jjtree.nodeArity() > 1 || isNeg) :
 { boolean isNeg = false; }
 {	
@@ -379,7 +379,7 @@ void expression() #sum(jjtree.nodeArity() > 1 || isNeg) :
   )*
 }
 
-// NEW: Reworked for MUL/DIV/MOD binary nodes
+// Reworked for MUL/DIV/MOD binary nodes
 void product() #void :
 {}
 {	term() 
@@ -400,7 +400,7 @@ LOOKAHEAD(2) fn_call()
 | simple_term()
 }
 
-// NEW: Nodified leaves and capturing values
+// Nodified leaves and capturing values
 void simple_term() #void :
 { Token t; }
 {	t=<IDNUM> { jjtThis.value = t.image; } #idnum
@@ -421,7 +421,7 @@ void vec_const()	 :
 | "[" (condition_list())? "]"
 }
 
-// NEW: Nodified identifiers
+// Nodified identifiers
 void identifier() #void :
 { Token t; }
 {	t=<IDNUM> { jjtThis.value = t.image; } #idnum
@@ -429,7 +429,7 @@ void identifier() #void :
 | t=<IDVEC> { jjtThis.value = t.image; } #idvec
 }
 
-// NEW: Nodified boolean constants
+// Nodified boolean constants
 void bool_simple() #void :
 { Token t; }
 {	t=<IDBOOL> { jjtThis.value = t.image; } #idbool
