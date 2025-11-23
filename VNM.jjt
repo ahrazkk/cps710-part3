@@ -431,4 +431,3 @@ void bool_simple() #void :
 | <TRUE> #TRUE
 | <FALSE> #FALSE
 }
-}
