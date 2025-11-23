@@ -357,8 +357,7 @@ void comparator() #void :
 |"==" #EQ
 | "!=" #NEQ
 | "=in" #IN
-|
-"!in" #NOTIN
+| "!in" #NOTIN
 }
 
 
