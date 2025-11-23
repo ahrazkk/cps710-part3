@@ -365,12 +365,12 @@ void comparator() #void :
 //---------------------------   EXPRESSIONS ------------------------------------------------
 
 // NEW: Reworked for ASTsum with pos/neg children
-void expression() #sum(>1) :
-{}
+void expression() #sum(jjtree.nodeArity() > 1 || isNeg) :
+{ boolean isNeg = false; }
 {	
   (
-     "+" product() #pos(1)
-   | "-" product() #neg(1)
+     "+" product()
+   | "-" { isNeg = true; } product() #neg(1)
    | product()
   )
   (
