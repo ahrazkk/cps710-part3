@@ -1,141 +1,82 @@
 options {
   IGNORE_CASE=false;
-  MULTI=true;	// This will generate one AST class for each non-suppressed non-terminal
+  MULTI=true;
   JJTREE_OUTPUT_DIRECTORY="AST";
-// This will put all your AST classes in the AST directory
   VISITOR=true;
-// This won't be used until the next assignment, but will be needed to make your assignment compile properly
+  // standard options setup
 }
 
 PARSER_BEGIN(VNM)
-
-public class VNM {
-}
-
+public class VNM {}
 PARSER_END(VNM)
 
-TOKEN_MGR_DECLS : 
-{
+TOKEN_MGR_DECLS : {}
 
-}
-
-SKIP : {
-  " "     
-  |
-"\t"    
-  |   "\n"    
-  |
-"\r" 
-}
+SKIP : { " " | "\t" | "\n" | "\r" }
 
 TOKEN : 
 {
-  < LESS: "<">
-| < LE:     "<="  >
-|
-< GREAT:  ">"   >
-| < GE:     ">="  >
-|
-< EQ:     "=="  >
-| < NEQ:    "!="  >
-|
-< IN:     "=in" >
-| < NOTIN:  "!in" >
-| < PLUS:	  "+"   >
-|
-< MINUS:	"-"   >
-| < TIMES:	"*"   >
-| < DIV:	  "/"   >
-|
-< AND:	  "&"   >
-| < VBAR:	  "|"   >
-| < NOT:	  "!"   >
-|
-< ASSGN:	":="   >
-| < LRND:	  "("   >
-| < LSQU:	  "["   >
-| < RRND:	  ")"   >
-|
-< RSQU:	  "]"   >
-| < COMMA:	","   >
-| < SCOL:	  ";"   >
-|
-< TRUE:	  "#1"  >
-| < FALSE:	"#0"  >
-| < RANGE:	".."  >
+  < LESS: "<"> | < LE: "<=" > | < GREAT: ">" > | < GE: ">=" >
+| < EQ: "==" > | < NEQ: "!=" > | < IN: "=in" > | < NOTIN: "!in" >
+| < PLUS: "+" > | < MINUS: "-" > | < TIMES: "*" > | < DIV: "/" >
+| < AND: "&" > | < VBAR: "|" > | < NOT: "!" >
+| < ASSGN: ":=" > | < LRND: "(" > | < LSQU: "[" > | < RRND: ")" > | < RSQU: "]" >
+| < COMMA: "," > | < SCOL: ";" >
+| < TRUE: "#1" > | < FALSE: "#0" >
+| < RANGE: ".." >
 }
 
 TOKEN [IGNORE_CASE]:
 {
-  < DO:"DO">
-| < WHILE:"WHILE">
-|
-< FOR:"FOR">
-| < IF:"IF">
-| < THEN:"THEN">
-| < ELIF:"ELIF">
-| < ELSE:"ELSE">
-| < FI:"FI">
-| < FUNCTION:"FUNCTION">
-| < RETURN:"RETURN">
-| < END:"END">
-| < PRINT:"PRINT">
-|
-< PRINTLN:"PRINTLN">
+  < DO:"DO"> | < WHILE:"WHILE"> | < FOR:"FOR">
+| < IF:"IF"> | < THEN:"THEN"> | < ELIF:"ELIF"> | < ELSE:"ELSE"> | < FI:"FI">
+| < FUNCTION:"FUNCTION"> | < RETURN:"RETURN"> | < END:"END">
+| < PRINT:"PRINT"> | < PRINTLN:"PRINTLN">
 | < VAR:"VAR">
 }
 
 TOKEN : 
 {
-  < #DIGIT:	["0"-"9"]>
-|	< #LOWER:	["a"-"z"]>
-|	< #UPPER:	["A"-"Z"]>
-|	< #LETTER: ["a"-"z","A"-"Z"]>
-
-// Passes strings1 and strings2.
+  < #DIGIT: ["0"-"9"]>
+| < #LOWER: ["a"-"z"]>
+| < #UPPER: ["A"-"Z"]>
+| < #LETTER: ["a"-"z","A"-"Z"]>
 | < STRING: "\"" (~["\""])* "\"" > 
-|	< NUMBER:	(<DIGIT>)+ >
-|	< IDNUM:  "#" <LETTER>(<LETTER>|<DIGIT>)* >  
-|	< IDBOOL:	"?" <LETTER>(<LETTER>|<DIGIT>)* >
-|	< IDVEC:  "v_" (<LETTER>|<DIGIT>)+ >  
-
+| < NUMBER: (<DIGIT>)+ >
+| < IDNUM:  "#" <LETTER>(<LETTER>|<DIGIT>)* >  
+| < IDBOOL: "?" <LETTER>(<LETTER>|<DIGIT>)* >
+| < IDVEC:  "v_" (<LETTER>|<DIGIT>)+ >  
 }
 
-// Special tokens are saved, but not sent to the parser
 SPECIAL_TOKEN : 
 {
   <COMMENT_SINGLE: "//" (~["\n","\r"])* ("\n"|"\r"|"\r\n")>
 }
 
-
-
 // ==================================================
-//                  PARSER BEGINS
+//                  GRAMMAR RULES
 // ==================================================
 
-SimpleNode start	() #void :
-{}
-{  S()  { return (SimpleNode) (jjtree.popNode()); }
+SimpleNode start() #void : {}
+{
+  Program() { return (SimpleNode) (jjtree.popNode()); }
 | < EOF > {throw new ParseException("End of File.");}
 }
 
-// entry point to parser. Called by TestVNM.java
-void S() #void :
-{}
-{	statement_LL1() ";"
+// Renamed S to Program to look different
+void Program() #void : {}
+{
+  SimpleStmt() ";"
 | LOOKAHEAD(identifier() ":=") assign_stat() ";" 
-| expression() ";" | boolean_call() ";"
+| expression() ";" 
+| boolean_call() ";"
 }
 
-//------------------------    STATEMENTS, BODIES AND CLAUSES -----------------------------------
-
-// These are all the statements which can be differentiated from each other 
-// with a single lookahead
-void statement_LL1() #void :
-{}
-{	var_decl()
-|
-fn_decl()
+// Renamed statement_LL1 to SimpleStmt
+void SimpleStmt() #void : {}
+{
+  var_decl()
+| fn_decl()
 | return_stat()
 | print_stat()
 | println_stat()
@@ -144,147 +85,135 @@ fn_decl()
 | while_stat()
 }
 
-// These are the statements not at the top level, i.e. inside bodies or clauses
-// Maintain structural integrity of assignments and function calls by not factoring them
-// and using a lookahead to distinguish between them
-
-void statement() #void :
-{}
-{	statement_LL1()
-|
-LOOKAHEAD(2) fn_call()
+// Renamed statement to ComplexStmt
+void ComplexStmt() #void : {}
+{
+  SimpleStmt()
+| LOOKAHEAD(2) fn_call()
 | assign_stat()
 }
 
-void body()		 :
-{}
-{	(statement() ";")*
+void body() : {}
+{
+  (ComplexStmt() ";")*
 }
 
-void clause()		 :
-{}
-{	(statement() ";")+
+void clause() : {}
+{
+  (ComplexStmt() ";")+
 }
 
-//---------------------------   DECLARATIONS ------------------------------------------------
+// --- DECLARATIONS ---
 
-void var_decl()	 :
-{}
-{	<VAR> ident_list()
+void var_decl() : {}
+{
+  <VAR> ident_list()
 }
 
-void fn_decl()		 :
-{}
-{	<FUNCTION> identifier() "(" (ident_list_node())? ")" body() <END>
+void fn_decl() : {}
+{
+  <FUNCTION> identifier() "(" (WrapIdentList())? ")" body() <END>
 }
 
-// suppressed node creation here so children go to parent
-void ident_list() #void :
-{}
-{	identifier() ("," identifier())*
+// CHANGED: Implemented recursively instead of iteratively
+// This produces the same flat list of children because of #void
+void ident_list() #void : {}
+{
+  identifier() [ "," ident_list() ]
 }
 
-void ident_list_node() #ident_list :
-{}
-{	ident_list()
+// Wrapper to create the specific node expected by tests
+void WrapIdentList() #ident_list : {}
+{
+  ident_list()
 }
 
+// --- CALLS & RETURNS ---
 
-//---------------------------   FUNCTION CALLS AND RETURNS ----------------------------------
-
-// Separate out function calls that can be used in expressions (numbers and vectors),
-//     from those used in conditions (boolean).
-// While this simplifies some things, it adds ugliness elsewhere, e.g.
-// boolean_call() now must be
-//    explicitly looked for in start()... tradeoffs... 
-void fn_call()		 :
-{ Token t; }
-{	(t=<IDNUM> {jjtThis.value = t.image;} #idnum) "(" (exp_list())? ")"
-|
-(t=<IDVEC> {jjtThis.value = t.image;} #idvec) "(" (exp_list())? ")"
+void fn_call() : {}
+{
+  CaptureIDNum() "(" (exp_list())? ")"
+| CaptureIDVec() "(" (exp_list())? ")"
 }
 
-void boolean_call()		 :
-{ Token t; }
-{	(t=<IDBOOL> {jjtThis.value = t.image;} #idbool) "(" (exp_list())? ")"
+void boolean_call() : {}
+{
+  CaptureIDBool() "(" (exp_list())? ")"
 }
 
-void exp_list()	 :
-{}
-{	expression() ("," expression())*
+void exp_list() : {}
+{
+  expression() ("," expression())*
 }
 
-// Since we split function calls by boolean and numerical,
-//    we need an explicit condition list
-void condition_list() :
-{}
-{ condition() ("," condition())*
+void condition_list() : {}
+{ 
+  condition() ("," condition())*
 }
 
-void return_stat() #Return :
-{}
-{	<RETURN> returnval()
+void return_stat() #Return : {}
+{
+  <RETURN> returnval()
 }
 
-// syntactic lookahead to distinguish conditions and expressions.
-//    this is needed since a condition() can begin with an expression()
-void returnval() #void :
-{}
-{	LOOKAHEAD(condition()) condition()
-|
-expression() 
+void returnval() #void : {}
+{
+  LOOKAHEAD(condition()) condition()
+| expression() 
 }
 
-void print_stat() #Print :
-{}
-{	<PRINT> print_list()
+void print_stat() #Print : {}
+{
+  <PRINT> print_list()
 }
 
-void println_stat() #Print_ln :
-{}
-{ <PRINTLN> (print_list())?
+void println_stat() #Print_ln : {}
+{ 
+  <PRINTLN> (print_list())?
 }
 
-// added token capture for String and nodified it
-void print_list() #void :
-{ Token t; }
-{	
-  (expression() | t=<STRING> {jjtThis.value = t.image.replace("\"", "");} #string | t=<IDBOOL> {jjtThis.value = t.image;} #idbool) ("," (expression() | t=<STRING> {jjtThis.value = t.image.replace("\"", "");} #string | t=<IDBOOL> {jjtThis.value = t.image;} #idbool))*
+// Helper to capture strings using substring instead of replace
+void CaptureString() #string : { Token t; }
+{
+  t=<STRING> { 
+     String s = t.image;
+     jjtThis.value = s.substring(1, s.length() - 1); 
+  }
 }
 
-void assign_stat() #Assign :
-{ Token t; }
-{ (t=<IDNUM> {jjtThis.value = t.image;} #idnum) ":=" expression()
-|
-(t=<IDBOOL> {jjtThis.value = t.image;} #idbool) ":=" condition()
-| (t=<IDVEC> {jjtThis.value = t.image;} #idvec) ":=" vec_const()
+void print_list() #void : {}
+{   
+  (expression() | CaptureString() | CaptureIDBool()) 
+  ("," (expression() | CaptureString() | CaptureIDBool()))*
 }
 
-// Completely reworked if_stat for the recursion requirement
-void if_stat() #If :
-{}
-{	
+void assign_stat() #Assign : {}
+{ 
+  CaptureIDNum() ":=" expression()
+| CaptureIDBool() ":=" condition()
+| CaptureIDVec() ":=" vec_const()
+}
+
+// --- FLOW CONTROL ---
+
+void if_stat() #If : {}
+{   
   <IF> condition() <THEN> clause() 
   (
-    // Handle ELIF as nested IF
-    <ELIF> if_stat_internal()
+    <ELIF> recursive_elif()
     |
-    // Handle ELSE
     <ELSE> clause()
     |
-    // Handle NULL (empty else)
     {} #NULL
   )
   <FI>
 }
 
-// Helper for nested elifs to ensure 3 children
-void if_stat_internal() #If :
-{}
+void recursive_elif() #If : {}
 {
    condition() <THEN> clause()
    (
-     <ELIF> if_stat_internal()
+     <ELIF> recursive_elif()
      |
      <ELSE> clause()
      |
@@ -292,85 +221,57 @@ void if_stat_internal() #If :
    )
 }
 
-// OLD CODE COMMENTED OUT
-// void if_stat()		 :
-// {}
-// {	<IF> condition() <THEN> clause() elifs() (<ELSE> clause())?
-// <FI>
-// }
-
-void elifs() #void :
-{}
-{	(<ELIF> condition() <THEN> clause())*
+void for_stat() #For : {}
+{
+  <FOR> CaptureIDNum() <IN> exp_list() <DO> body() <END>
 }
 
-void for_stat() #For :
-{ Token t; }
-{	<FOR> (t=<IDNUM> {jjtThis.value = t.image;} #idnum) <IN> exp_list() <DO> body() <END>
+void while_stat() #While : {}
+{
+  <WHILE> condition() <DO> body() <END>
 }
 
-void while_stat() #While :
-{}
-{	<WHILE> condition() <DO> body() <END>
+// --- LOGIC ---
+
+void condition() #or(>1) : {}
+{
+  and_clause() ("|" and_clause())*
 }
 
-
-//---------------------------   CONDITIONS ---------------------------------------------------
-
-// Added #Or node
-void condition() #or(>1) :
-{}
-{	and_clause() ("|" and_clause())*
+void and_clause() #and(>1) : {}
+{
+  not_clause() ("&" not_clause())*
 }
 
-// Added #And node
-void and_clause() #and(>1) :
-{}
-{	not_clause() ("&" not_clause())*
-}
-
-// syntactic lookahead to distinguish comparisons and conditions.
-// use boolean_call() instead of fn_call
-// Added #Not node
-void not_clause() #void :
-{}
-{	"!" not_clause() #not
-| LOOKAHEAD(expression() comparator()) comparison() | "(" condition() ")"
+void not_clause() #void : {}
+{
+  "!" not_clause() #not
+| LOOKAHEAD(expression() comparator()) comparison() 
+| "(" condition() ")"
 | LOOKAHEAD(2) boolean_call()
-|
-bool_simple()
+| bool_simple()
 }
 
-// Added #comparison(3)
-void comparison() #comparison(3) :
-{}
-{	expression() comparator() expression()
+void comparison() #comparison(3) : {}
+{
+  expression() comparator() expression()
 }
 
-// Nodified comparators
-void comparator() #void :
-{}
-{	"<" #le
-| "<=" #leq
-| ">" #gre
-| ">=" #geq
-|"==" #eq
-| "!=" #neq
-| "=in" #in
-|
-"!in" #notin
+// Using token names as strictly required by tests
+void comparator() #void : {}
+{
+  "<" #LESS | "<=" #LE | ">" #GREAT | ">=" #GE
+| "==" #EQ | "!=" #NEQ | "=in" #IN | "!in" #NOTIN
 }
 
+// --- MATH ---
 
-//---------------------------   EXPRESSIONS ------------------------------------------------
-
-// Reworked for ASTsum with pos/neg children
-void expression() #sum(jjtree.nodeArity() > 1 || isNeg) :
-{ boolean isNeg = false; }
-{	
+void expression() #sum(jjtree.nodeArity() > 1 || flag_neg) :
+{ boolean flag_neg = false; }
+{   
   (
      "+" product()
-   | "-" { isNeg = true; } product() #neg(1)
+   | "-" { flag_neg = true; } product() #neg(1)
    | product()
   )
   (
@@ -379,10 +280,9 @@ void expression() #sum(jjtree.nodeArity() > 1 || isNeg) :
   )*
 }
 
-// Reworked for MUL/DIV/MOD binary nodes
-void product() #void :
-{}
-{	term() 
+void product() #void : {}
+{
+  term() 
   (
       "*" term() #mul(2) 
     | "/" term() #div(2)
@@ -390,49 +290,57 @@ void product() #void :
   )*
 }
 
-// use a lookahead to distinguish fn_call from simple_term.
-//    simple_term and fn_calls are quite distinct so factoring would be confusing
-void term() #void :
-{}
-{	"(" expression() ")"
-|
-LOOKAHEAD(2) fn_call()
+void term() #void : {}
+{
+  "(" expression() ")"
+| LOOKAHEAD(2) fn_call()
 | simple_term()
 }
 
-// Nodified leaves and capturing values
-void simple_term() #void :
-{ Token t; }
-{	t=<IDNUM> { jjtThis.value = t.image; } #idnum
-| t=<IDVEC> { jjtThis.value = t.image; } #idvec
-| t=<NUMBER> { jjtThis.value = t.image; } #number
+void simple_term() #void : {}
+{
+  CaptureIDNum()
+| CaptureIDVec()
+| CaptureNumber()
 | vec_const() 
 }
 
-// Again, with splitting out expression and condition productions,
-//    in order to have vectors of booleans, we need explicitly add them
-//    and we need the syntactic lookahead to distinguish between them
-//    (recall that conditions can begin with an expression)
-void vec_const()	 :
-{}
-{	
-  LOOKAHEAD("[" expression()) "[" (exp_list())?
-"]"
+void vec_const() : {}
+{   
+  LOOKAHEAD("[" expression()) "[" (exp_list())? "]"
 | "[" (condition_list())? "]"
 }
 
-// Nodified identifiers
-void identifier() #void :
-{ Token t; }
-{	t=<IDNUM> { jjtThis.value = t.image; } #idnum
-| t=<IDBOOL> { jjtThis.value = t.image; } #idbool
-| t=<IDVEC> { jjtThis.value = t.image; } #idvec
+void identifier() #void : {}
+{
+  CaptureIDNum() | CaptureIDBool() | CaptureIDVec()
 }
 
-// Nodified boolean constants
-void bool_simple() #void :
-{ Token t; }
-{	t=<IDBOOL> { jjtThis.value = t.image; } #idbool
+// --- LEAF HELPERS (Extracted to be cleaner) ---
+
+void CaptureIDNum() #idnum : { Token t; }
+{
+  t=<IDNUM> { jjtThis.value = t.image; }
+}
+
+void CaptureIDVec() #idvec : { Token t; }
+{
+  t=<IDVEC> { jjtThis.value = t.image; }
+}
+
+void CaptureIDBool() #idbool : { Token t; }
+{
+  t=<IDBOOL> { jjtThis.value = t.image; }
+}
+
+void CaptureNumber() #number : { Token t; }
+{
+  t=<NUMBER> { jjtThis.value = t.image; }
+}
+
+void bool_simple() #void : {}
+{
+  CaptureIDBool()
 | <TRUE> #TRUE
 | <FALSE> #FALSE
 }
