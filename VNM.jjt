@@ -258,11 +258,31 @@ void comparison() #comparison(3) : {}
 }
 
 // Using token names as strictly required by tests
-void comparator() #void : {}
-{
-  "<" #LESS | "<=" #LE | ">" #GREAT | ">=" #GE
-| "==" #EQ | "!=" #NEQ | "=in" #IN | "!in" #NOTIN
+void comparator() #void :
+
+{}
+
+{ "<" #le
+
+| "<=" #leq
+
+| ">" #gre
+
+| ">=" #geq
+
+|"==" #eq
+
+| "!=" #neq
+
+| "=in" #in
+
+|
+
+"!in" #notin
+
 }
+
+
 
 // --- MATH ---
 
